@@ -1,0 +1,311 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+using namespace std;
+
+class Bill {
+private:
+    string Item;
+    int Rate, Quantity;
+
+public:
+    Bill() : Item(""), Rate(0), Quantity(0) {}
+
+    void setItem(const string& item) {
+        Item = item;
+    }
+
+    void setRate(int rate) {
+        Rate = rate;
+    }
+
+    void setQuant(int quant) {
+        Quantity = quant;
+    }
+
+    string getItem() const {
+        return Item;
+    }
+
+    int getRate() const {
+        return Rate;
+    }
+
+    int getQuant() const {
+        return Quantity;
+    }
+};
+
+void addPredefinedProducts() {
+    ifstream infile("Inventory.txt");
+    if (infile.good()) {
+        infile.close();
+        return;
+    }
+    infile.close();
+
+    ofstream out("Inventory.txt", ios::app);
+    if (!out) {
+        cerr << "Error: File can't open!" << endl;
+        return;
+    }
+
+    out << "sooji-50kg:1500:50" << endl;
+    out << "sugar-50kg:2200:50" << endl;
+    out << "maida-50kg:1500:50" << endl;
+    out << "atta-50kg:1350:50" << endl;
+
+    out.close();
+}
+
+void addItemToInventory(Bill& b) {
+    string item;
+    int rate, quant;
+
+    cout << "\tEnter Item Name (e.g., 'rice-50kg'): ";
+    cin >> item;
+    b.setItem(item);
+
+    cout << "\tEnter Rate Of Item: ";
+    cin >> rate;
+    b.setRate(rate);
+
+    cout << "\tEnter Quantity Of Item: ";
+    cin >> quant;
+    b.setQuant(quant);
+
+    ofstream out("Inventory.txt", ios::app);
+    if (!out) {
+        cerr << "\tError: File Can't Open!" << endl;
+    } else {
+        out << b.getItem() << ":" << b.getRate() << ":" << b.getQuant() << endl;
+        cout << "\tItem Added Successfully" << endl;
+    }
+}
+
+void updateInventory() {
+    string item;
+    int newRate, newQuant;
+    char choice;
+
+    cout << "\tEnter Item Name to Update (e.g., 'rice-50kg'): ";
+    cin >> item;
+
+    cout << "\tDo you want to update the rate? (y/n): ";
+    cin >> choice;
+    bool updateRate = (choice == 'y' || choice == 'Y');
+    if (updateRate) {
+        cout << "\tEnter New Rate Of Item: ";
+        cin >> newRate;
+    }
+
+    cout << "\tDo you want to update the quantity? (y/n): ";
+    cin >> choice;
+    bool updateQuant = (choice == 'y' || choice == 'Y');
+    if (updateQuant) {
+        cout << "\tEnter New Quantity Of Item: ";
+        cin >> newQuant;
+    }
+
+    ifstream in("Inventory.txt");
+    ofstream tempOut("TempInventory.txt");
+
+    if (!in || !tempOut) {
+        cerr << "Error: File can't open!" << endl;
+        return;
+    }
+
+    string line;
+    bool found = false;
+    while (getline(in, line)) {
+        stringstream ss(line);
+        string itemName;
+        int itemRate, itemQuant;
+        char delimiter;
+
+        getline(ss, itemName, ':');
+        ss >> itemRate >> delimiter >> itemQuant;
+
+        if (item == itemName) {
+            found = true;
+            if (updateRate) {
+                itemRate = newRate;
+            }
+            if (updateQuant) {
+                itemQuant += newQuant;
+            }
+            tempOut << itemName << ":" << itemRate << ":" << itemQuant << endl;
+            cout << "\tItem Updated Successfully" << endl;
+        } else {
+            tempOut << line << endl;
+        }
+    }
+
+    if (!found) {
+        cout << "\tItem Not Found!" << endl;
+    }
+
+    in.close();
+    tempOut.close();
+
+    remove("Inventory.txt");
+    rename("TempInventory.txt", "Inventory.txt");
+}
+
+void addItemToBill() {
+    string item;
+    int quant;
+
+    cout << "\tEnter Item: ";
+    cin >> item;
+    cout << "\tEnter Quantity: ";
+    cin >> quant;
+
+    ifstream in("Inventory.txt");
+    ofstream tempOut("TempInventory.txt");
+    ofstream billOut("Bill.txt", ios::app);
+
+    if (!in || !tempOut || !billOut) {
+        cerr << "Error: File can't open!" << endl;
+        return;
+    }
+
+    string line;
+    bool found = false;
+    while (getline(in, line)) {
+        stringstream ss(line);
+        string itemName;
+        int itemRate, itemQuant;
+        char delimiter;
+
+        getline(ss, itemName, ':');
+        ss >> itemRate >> delimiter >> itemQuant;
+
+        if (item == itemName) {
+            found = true;
+            if (quant <= itemQuant) {
+                int amount = itemRate * quant;
+                cout << "\tItem | Rate | Quantity | Amount" << endl;
+                cout << "\t" << itemName << "\t " << itemRate << "\t " << quant << "\t " << amount << endl;
+                int newQuant = itemQuant - quant;
+
+                tempOut << itemName << ":" << itemRate << ":" << newQuant << endl;
+                billOut << itemName << ":" << itemRate << ":" << quant << ":" << amount << endl;
+            } else {
+                cout << "\tSorry, not enough " << item << " in stock!" << endl;
+                tempOut << line << endl;
+            }
+        } else {
+            tempOut << line << endl;
+        }
+    }
+
+    if (!found) {
+        cout << "\tItem Not Available!" << endl;
+    }
+
+    in.close();
+    tempOut.close();
+    billOut.close();
+
+    remove("Inventory.txt");
+    rename("TempInventory.txt", "Inventory.txt");
+}
+
+void printBill() {
+    ifstream billIn("Bill.txt");
+    if (!billIn) {
+        cerr << "Error: File can't open!" << endl;
+        return;
+    }
+
+    string line;
+    int total = 0;
+    cout << "\tItem | Rate | Quantity | Amount" << endl;
+    while (getline(billIn, line)) {
+        stringstream ss(line);
+        string itemName;
+        int itemRate, itemQuant, amount;
+        char delimiter;
+
+        getline(ss, itemName, ':');
+        ss >> itemRate >> delimiter >> itemQuant >> delimiter >> amount;
+        cout << "\t" << itemName << "\t " << itemRate << "\t " << itemQuant << "\t " << amount << endl;
+        total += amount;
+    }
+
+    cout << "\tTotal Bill: " << total << endl;
+    billIn.close();
+}
+
+void displayInventory() {
+    ifstream in("Inventory.txt");
+    if (!in) {
+        cerr << "Error: File can't open!" << endl;
+        return;
+    }
+
+    string line;
+    cout << "\tItem | Rate | Quantity" << endl;
+    while (getline(in, line)) {
+        stringstream ss(line);
+        string itemName;
+        int itemRate, itemQuant;
+        char delimiter;
+
+        getline(ss, itemName, ':');
+        ss >> itemRate >> delimiter >> itemQuant;
+        cout << "\t" << itemName << "\t " << itemRate << "\t " << itemQuant << endl;
+    }
+
+    in.close();
+}
+
+int main() {
+    addPredefinedProducts();
+    Bill b;
+
+    bool exit = false;
+    while (!exit) {
+        int val;
+
+        cout << "\tWelcome To Ration Inventory Organiser" << endl;
+        cout << "\t*************************************" << endl;
+        cout << "\t1. Add Item to Inventory." << endl;
+        cout << "\t2. Update Inventory." << endl;
+        cout << "\t3. Add Item to Bill." << endl;
+        cout << "\t4. Print Bill." << endl;
+        cout << "\t5. Display Inventory." << endl;
+        cout << "\t6. Exit." << endl;
+        cout << "\tEnter Choice: ";
+        cin >> val;
+
+        switch (val) {
+            case 1:
+                addItemToInventory(b);
+                break;
+            case 2:
+                updateInventory();
+                break;
+            case 3:
+                addItemToBill();
+                break;
+            case 4:
+                printBill();
+                break;
+            case 5:
+                displayInventory();
+                break;
+            case 6:
+                exit = true;
+                cout << "\tGood Luck!" << endl;
+                break;
+            default:
+                cout << "\tInvalid choice. Please try again." << endl;
+        }
+    }
+
+    return 0;
+}
